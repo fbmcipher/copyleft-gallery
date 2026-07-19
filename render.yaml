@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: copyleft-gallery
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false
+      - key: NEURALWATT_API_BASE
+        value: https://api.neuralwatt.com/v1
+      - key: NEURALWATT_API_KEY
+        sync: false
+      - key: NEURALWATT_MODEL
+        sync: false
+      - key: NEURALWATT_PLANNER_MODEL
+        value: kimi-k2.6-fast
+      - key: BRAVE_API_KEY
+        sync: false
+      - key: SITE_USERNAME
+        value: gallery
+      - key: SITE_PASSWORD
+        sync: false
