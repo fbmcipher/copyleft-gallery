@@ -15,15 +15,20 @@ import pg from 'pg';
 const { Pool } = pg;
 
 const DATA_DIR = path.join(import.meta.dirname, '..', 'data', 'curations');
-fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const cache = new Map(); // id -> live curation (records as Map)
 const DATABASE_URL = process.env.DATABASE_URL?.trim() ?? '';
 let pool;
 let initialization;
+let fileStoreReady = false;
 
 const safeId = (id) => /^[a-zA-Z0-9-]{1,80}$/.test(String(id));
 const fileFor = (id) => path.join(DATA_DIR, `${id}.json`);
+const ensureFileStore = () => {
+  if (fileStoreReady) return;
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fileStoreReady = true;
+};
 
 function serialize(c) {
   return {
@@ -72,7 +77,10 @@ function metadata(c) {
 export const databasePersistenceEnabled = () => Boolean(DATABASE_URL);
 
 export async function initCurationStore() {
-  if (!DATABASE_URL) return;
+  if (!DATABASE_URL) {
+    ensureFileStore();
+    return;
+  }
   if (initialization) return initialization;
 
   pool = new Pool({
@@ -135,6 +143,7 @@ export async function getCuration(id) {
     return c;
   }
 
+  ensureFileStore();
   try {
     const raw = JSON.parse(fs.readFileSync(fileFor(id), 'utf8'));
     const c = deserialize(raw);
@@ -163,6 +172,7 @@ export async function saveCuration(c) {
     return;
   }
 
+  ensureFileStore();
   const json = JSON.stringify(data);
   const tmp = fileFor(c.id) + '.tmp';
   fs.writeFileSync(tmp, json);
@@ -188,6 +198,7 @@ export async function deleteCuration(id) {
     await initCurationStore();
     await pool.query('DELETE FROM gallery_curations WHERE id = $1', [id]);
   } else {
+    ensureFileStore();
     fs.rmSync(fileFor(id), { force: true });
   }
   cache.delete(id);
@@ -208,6 +219,7 @@ export async function listCurations() {
     });
   }
 
+  ensureFileStore();
   const out = [];
   for (const f of fs.readdirSync(DATA_DIR)) {
     if (!f.endsWith('.json')) continue;

@@ -1,6 +1,11 @@
 node_modules/
 dist/
+public/
 .env
 .DS_Store
 *.log
 data/
+.neon
+.vercel/
+.vercel
+.env*

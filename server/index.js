@@ -19,7 +19,7 @@ import { braveConfigured } from './research/brave.js';
 import { askQuestion } from './ask.js';
 
 const PORT = Number(process.env.PORT || 3017);
-const DIST = path.join(import.meta.dirname, '..', 'dist');
+const DIST = path.join(import.meta.dirname, '..', 'public');
 const SITE_PASSWORD = process.env.SITE_PASSWORD ?? '';
 const SITE_USERNAME = process.env.SITE_USERNAME || 'gallery';
 
@@ -234,6 +234,13 @@ app.delete('/api/curations/:id', asyncHandler(async (req, res) => {
   res.status(204).end();
 }));
 
+// In Vercel's split frontend/backend deployment, enter through Express once
+// so the browser caches Basic Auth for subsequent API requests. Static assets
+// are then served by the frontend service.
+if (process.env.VERCEL) {
+  app.get('/', (req, res) => res.redirect('/index.html'));
+}
+
 // Hashed assets can cache forever; index.html must never be cached or a
 // rebuild strands clients on a stale bundle.
 app.use(
@@ -259,9 +266,13 @@ app.use((err, req, res, next) => {
 });
 
 await initCurationStore();
-app.listen(PORT, () => {
-  console.log(`copyleft gallery listening on http://localhost:${PORT}`);
-  if (!inferenceConfigured()) {
-    console.warn('⚠ NEURALWATT_API_KEY missing — queries will fail until .env is filled in.');
-  }
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`copyleft gallery listening on http://localhost:${PORT}`);
+    if (!inferenceConfigured()) {
+      console.warn('⚠ NEURALWATT_API_KEY missing — queries will fail until .env is filled in.');
+    }
+  });
+}
+
+export default app;
